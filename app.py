@@ -80,5 +80,10 @@ def get_data():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "🚀 Backend Flask está rodando na nuvem!"}), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
