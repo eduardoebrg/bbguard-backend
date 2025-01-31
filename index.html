@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBGuard - Dados do MPU6050</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        table {
+            width: 80%;
+            margin: auto;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+
+        canvas {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        .event-btn {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📡 Dados do MPU6050</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Z</th>
+                <th>Evento</th>
+            </tr>
+        </thead>
+        <tbody id="data-table">
+        </tbody>
+    </table>
+
+    <h2>📊 Gráficos</h2>
+    <canvas id="accelChart"></canvas>
+
+    <script>
+        const apiUrl = "http://192.168.15.136:5000/get-data"; // Backend Flask
+
+        async function fetchData() {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            // Atualizar tabela
+            const table = document.getElementById("data-table");
+            table.innerHTML = "";
+            data.forEach((item) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.x}</td>
+                        <td>${item.y}</td>
+                        <td>${item.z}</td>
+                        <td><button class="event-btn" onclick="markEvent(${item.id})">Marcar</button></td>
+                    </tr>`;
+            });
+
+            // Atualizar gráfico
+            updateChart(data);
+        }
+
+        function updateChart(data) {
+            const labels = data.map(d => d.id);
+            const xData = data.map(d => d.x);
+            const yData = data.map(d => d.y);
+            const zData = data.map(d => d.z);
+
+            accelChart.data.labels = labels;
+            accelChart.data.datasets[0].data = xData;
+            accelChart.data.datasets[1].data = yData;
+            accelChart.data.datasets[2].data = zData;
+            accelChart.update();
+        }
+
+        async function markEvent(recordId) {
+            const eventUrl = "http://192.168.15.136:5000/mark-event";
+            const response = await fetch(eventUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: recordId })
+            });
+
+            if (response.ok) {
+                alert(`✅ Evento marcado para ID ${recordId}!`);
+                fetchData(); // Atualiza a tabela após marcar o evento
+            } else {
+                alert("❌ Erro ao marcar evento!");
+            }
+        }
+
+        // Criar o gráfico
+        const ctx = document.getElementById('accelChart').getContext('2d');
+        const accelChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'X', borderColor: 'red', data: [], fill: false },
+                    { label: 'Y', borderColor: 'green', data: [], fill: false },
+                    { label: 'Z', borderColor: 'blue', data: [], fill: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Atualizar os dados a cada 5 segundos
+        fetchData();
+        setInterval(fetchData, 1000);
+    </script>
+
+</body>
+
+</html>
